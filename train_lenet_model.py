@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from sklearn.utils import shuffle
 
-EPOCHS = 2
+EPOCHS = 4
 SAMPLE_DIR = './resources/example_data'
 
 # Load sample data
@@ -70,10 +70,11 @@ print("Training samples", train_samples_per_epoch, "Validation samples", validat
 # Define simple model
 from keras.models import Sequential
 from keras.layers import Dense, Flatten, Dropout, Lambda
-from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import Conv2D, MaxPooling2D, Cropping2D
 
 model = Sequential()
 model.add(Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(160, 320, 3)))
+model.add(Cropping2D(cropping=((70, 25), (0,0))))
 model.add(Conv2D(28, 28, 6, activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Conv2D(10, 10, 16, activation='relu'))
@@ -94,6 +95,8 @@ history = model.fit_generator(train_generator, samples_per_epoch=train_samples_p
 model.save('model.h5')
 
 # Create some graphs
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # list all data in history

@@ -6,7 +6,7 @@ from sklearn.utils import shuffle
 EPOCHS = 4
 SAMPLE_DIR = './resources/example_data'
 SAMPLE_MULTIPLIER = 4
-STEERING_ANGLE_CORRECTION = 0.5
+STEERING_ANGLE_CORRECTION = 0.25
 
 # Load sample data
 def get_driving_log():
@@ -88,12 +88,13 @@ model.add(Conv2D(48, 5, 5, subsample=(2, 2), activation='relu'))
 model.add(Conv2D(64, 3, 3, activation='relu'))
 model.add(Conv2D(64, 3, 3, activation='relu'))
 model.add(Flatten())
+model.add(Dropout(0.5))
 model.add(Dense(100, activation='relu'))
-model.add(Dropout(0.5))
+# model.add(Dropout(0.5))
 model.add(Dense(50, activation='relu'))
-model.add(Dropout(0.5))
+# model.add(Dropout(0.5))
 model.add(Dense(10))
-model.add(Dropout(0.5))
+# model.add(Dropout(0.5))
 model.add(Dense(1))
 
 model.compile(optimizer='Adam', loss='mse', metrics=['accuracy'])

@@ -5,6 +5,7 @@ from sklearn.utils import shuffle
 
 EPOCHS = 4
 SAMPLE_DIR = './resources/example_data'
+SAMPLE_MULTIPLIER = 4
 
 # Load sample data
 def get_driving_log():
@@ -24,7 +25,7 @@ train_samples, validation_samples = train_test_split(driving_log, test_size=0.2)
 # Create generators for train and validation data
 def generator(samples, batch_size=32, gen_name="GeneratorX"):
     num_samples = len(samples)
-    batch_size = batch_size // 4
+    batch_size = batch_size // SAMPLE_MULTIPLIER
     total = 0
     while 1:  # Loop forever so the generator never terminates
         samples = shuffle(samples)
@@ -68,8 +69,8 @@ train_generator = generator(train_samples, gen_name="Training data generator")
 validation_generator = generator(validation_samples, gen_name="Validation data generator")
 
 # Account for data generation
-train_samples_per_epoch = len(train_samples) * 2
-validation_samples_per_epoch = len(validation_samples) * 2
+train_samples_per_epoch = len(train_samples) * SAMPLE_MULTIPLIER
+validation_samples_per_epoch = len(validation_samples) * SAMPLE_MULTIPLIER
 
 print("Training samples", train_samples_per_epoch, "Validation samples", validation_samples_per_epoch)
 

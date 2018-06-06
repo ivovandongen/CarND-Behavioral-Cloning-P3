@@ -6,6 +6,7 @@ from sklearn.utils import shuffle
 EPOCHS = 4
 SAMPLE_DIR = './resources/example_data'
 SAMPLE_MULTIPLIER = 4
+STEERING_ANGLE_CORRECTION = 0.5
 
 # Load sample data
 def get_driving_log():
@@ -43,9 +44,8 @@ def generator(samples, batch_size=32, gen_name="GeneratorX"):
                 angles.append(center_angle)
 
                 # Add left and right camera images
-                correction = 0.2  # this is a parameter to tune
-                left_angle = center_angle + correction
-                right_angle = center_angle - correction
+                left_angle = center_angle + STEERING_ANGLE_CORRECTION
+                right_angle = center_angle - STEERING_ANGLE_CORRECTION
                 angles.extend([left_angle, right_angle])
 
                 left_image = cv2.imread(SAMPLE_DIR + '/IMG/' + batch_sample[1].split('/')[-1])

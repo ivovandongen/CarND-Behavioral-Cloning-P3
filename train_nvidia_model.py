@@ -21,10 +21,15 @@ driving_log, header = get_driving_log()
 
 # Split off validation set
 from sklearn.model_selection import train_test_split
-train_samples, validation_samples = train_test_split(driving_log, test_size=0.2)
+train_samples, validation_samples = train_test_split(driving_log, test_size=0.4)
+validation_samples, test_samples = train_test_split(validation_samples, test_size=0.5)
+
+print("Original train: {}, validation: {}, test {}".format(len(train_samples), len(validation_samples), len(test_samples)))
 
 # Create generators for train and validation data
-def generator(samples, batch_size=32, gen_name="GeneratorX"):
+
+
+def generator(samples, batch_size=32):
     num_samples = len(samples)
     batch_size = batch_size // SAMPLE_MULTIPLIER
     total = 0
@@ -61,18 +66,19 @@ def generator(samples, batch_size=32, gen_name="GeneratorX"):
             X = np.array(images)
             y = np.array(angles)
             total += len(images)
-            # print (gen_name, "Yielding #samples", len(images), total)
             yield shuffle(X, y)
 
 
-train_generator = generator(train_samples, gen_name="Training data generator")
-validation_generator = generator(validation_samples, gen_name="Validation data generator")
+train_generator = generator(train_samples)
+validation_generator = generator(validation_samples)
+test_generator = generator(validation_samples)
 
 # Account for data generation
 train_samples_per_epoch = len(train_samples) * SAMPLE_MULTIPLIER
 validation_samples_per_epoch = len(validation_samples) * SAMPLE_MULTIPLIER
+test_samples_per_epoch = len(test_samples) * SAMPLE_MULTIPLIER
 
-print("Training samples", train_samples_per_epoch, "Validation samples", validation_samples_per_epoch)
+print("Augmented train: {}, validation: {}, test {}".format(train_samples_per_epoch, validation_samples_per_epoch, test_samples_per_epoch))
 
 # Define simple model
 from keras.models import Sequential

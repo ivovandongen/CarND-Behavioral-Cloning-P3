@@ -16,8 +16,6 @@ def get_driving_log():
 
 
 driving_log, header = get_driving_log()
-# driving_log = driving_log[0:200]
-
 
 # Split off validation set
 from sklearn.model_selection import train_test_split
@@ -26,7 +24,7 @@ train_samples, validation_samples = train_test_split(driving_log, test_size=0.2)
 # Create generators for train and validation data
 def generator(samples, batch_size=32, gen_name="GeneratorX"):
     num_samples = len(samples)
-    batch_size = batch_size // 2
+    batch_size = batch_size // 4
     total = 0
     while 1:  # Loop forever so the generator never terminates
         samples = shuffle(samples)
@@ -37,13 +35,21 @@ def generator(samples, batch_size=32, gen_name="GeneratorX"):
             images = []
             angles = []
             for batch_sample in batch_samples:
-                name = SAMPLE_DIR + '/IMG/' + batch_sample[0].split('/')[-1]
-
                 # Add center image
-                center_image = cv2.imread(name)
+                center_image = cv2.imread(SAMPLE_DIR + '/IMG/' + batch_sample[0].split('/')[-1])
                 center_angle = float(batch_sample[3])
                 images.append(center_image)
                 angles.append(center_angle)
+
+                # Add left and right camera images
+                correction = 0.2  # this is a parameter to tune
+                left_angle = center_angle + correction
+                right_angle = center_angle - correction
+                angles.extend([left_angle, right_angle])
+
+                left_image = cv2.imread(SAMPLE_DIR + '/IMG/' + batch_sample[1].split('/')[-1])
+                right_image = cv2.imread(SAMPLE_DIR + '/IMG/' + batch_sample[2].split('/')[-1])
+                images.extend([left_image, right_image])
 
                 # Add flipped version
                 center_image_flipped = np.fliplr(center_image)

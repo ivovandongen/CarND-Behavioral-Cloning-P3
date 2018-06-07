@@ -11,7 +11,7 @@ def get_driving_log():
         reader = csv.reader(file)
         driving_log = [line for line in reader]
         header = driving_log[0]
-        return driving_log[1:len(driving_log) - 1], header  # strip header
+        return driving_log[1:len(driving_log)], header  # strip header
 
 
 driving_log, header = get_driving_log()

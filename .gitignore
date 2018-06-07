@@ -1,1 +1,2 @@
-#resources
+resources/*.zip
+resources/mac_sim.app

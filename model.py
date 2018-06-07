@@ -7,6 +7,7 @@ from keras.models import Sequential, load_model, model_from_json
 from keras.layers import Dense, Flatten, Dropout, Lambda
 from keras.layers import Conv2D, Cropping2D
 import matplotlib
+from keras.utils.visualize_util import plot
 
 # Make sure the plots work on a headless machine
 matplotlib.use('Agg')
@@ -163,7 +164,7 @@ def parse_cmd_line_args():
     parser.add_argument(
         'action',
         type=str,
-        choices=['train', 'fine_tune', 'test'],
+        choices=['train', 'fine_tune', 'test', 'plot'],
         default='',
         help='main action'
     )
@@ -277,5 +278,13 @@ def main():
         result = model.evaluate_generator(test_generator, val_samples=test_samples_nb)
         print("Test result:", result)
 
+    elif args.action == 'plot':
+        print("Plotting model", args.model)
+        model = load_model_with_fallback(args.model)
+        print(model.summary())
+        plot(model, to_file='model.png', show_shapes=True, show_layer_names=False)
+
+
 if __name__ == '__main__':
     main()
+

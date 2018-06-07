@@ -3,7 +3,7 @@ import csv
 import cv2
 import numpy as np
 from sklearn.utils import shuffle
-from keras.models import Sequential, load_model
+from keras.models import Sequential, load_model, model_from_json
 from keras.layers import Dense, Flatten, Dropout, Lambda
 from keras.layers import Conv2D, Cropping2D
 import matplotlib
@@ -76,6 +76,11 @@ def generator(samples, sample_dir, batch_size=32, steering_angle_correction=.25)
             yield shuffle(X, y)
 
 
+def compile_model(model):
+    model.compile(optimizer='Adam', loss='mse', metrics=['accuracy'])
+    return model
+
+
 def create_model():
     model = Sequential()
     # Normalize
@@ -95,8 +100,25 @@ def create_model():
     model.add(Dense(10))
     model.add(Dense(1))
 
-    model.compile(optimizer='Adam', loss='mse', metrics=['accuracy'])
-    return model
+    return compile_model(model)
+
+
+def load_model_with_fallback(filename):
+    try:
+        return load_model(filename)
+    except ValueError as err:
+        print("Could not load model as is:", err)
+        print("Loading without the optimizer state")
+        import h5py
+        f = h5py.File(filename, mode='r')
+
+        # instantiate model
+        model_config = f.attrs.get('model_config')
+        if model_config is None:
+            raise ValueError('No model found in config file.')
+        model = model_from_json(model_config.decode('utf-8'))
+        model.load_weights(filename)
+        return compile_model(model)
 
 
 def train_model(model, train_generator, train_samples_per_epoch, validation_generator, validation_samples_per_epoch, epochs):
@@ -141,7 +163,7 @@ def parse_cmd_line_args():
     parser.add_argument(
         'action',
         type=str,
-        choices=['train', 'test'],
+        choices=['train', 'fine_tune', 'test'],
         default='',
         help='main action'
     )
@@ -156,7 +178,13 @@ def parse_cmd_line_args():
         '-m',
         type=str,
         default='model.h5',
-        help='Model input/output file')
+        help='Model input file')
+    parser.add_argument(
+        '--model_out',
+        '-o',
+        type=str,
+        default='model-out.h5',
+        help='Model output file')
     parser.add_argument(
         '--epochs',
         '-e',
@@ -200,12 +228,48 @@ def main():
     print("Augmented train: {}, validation: {}".format(train_samples_per_epoch, validation_samples_per_epoch))
 
     if args.action == 'train':
+        # Train a new model
+        print("Training model", args.model_out)
         model = create_model()
         history = train_model(model, train_generator, train_samples_per_epoch, validation_generator, validation_samples_per_epoch, epochs=args.epochs)
-        save_model(model, args.model)
+        save_model(model, args.model_out)
         plot_training_graphs(history)
+        print(model.summary())
+
+    if args.action =='fine_tune':
+        # Fine tune an existing model
+        print("Fine tuning ", args.model)
+        # Load
+        model = load_model_with_fallback(args.model)
+        print("Input model:")
+        print(model.summary())
+
+        # Freeze the layers except the Fully connected layers
+        for layer in model.layers:
+            if not type(layer) == Dense:
+                layer.trainable = False
+            else:
+                print("Keeping {} trainable".format(layer))
+
+        # Train
+        history = train_model(model, train_generator, train_samples_per_epoch, validation_generator, validation_samples_per_epoch, epochs=args.epochs)
+
+        # Set all layers to trainable again
+        for layer in model.layers:
+            layer.trainable = True
+
+        # Save
+        save_model(model, args.model_out)
+        plot_training_graphs(history)
+        print("Output model:")
+        print(model.summary())
+
     elif args.action == 'test':
-        model = load_model(args.model)
+        # Test a model
+        print("Testing model", args.model)
+        model = load_model_with_fallback(args.model)
+        print(model.summary())
+
         test_generator = generator(validation_samples, sample_dir=args.sample_data_dir,
                                    steering_angle_correction=args.steering_angle_correction)
         test_samples_nb = len(test_samples) * SAMPLE_MULTIPLIER

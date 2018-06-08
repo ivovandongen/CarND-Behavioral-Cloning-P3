@@ -302,7 +302,7 @@ def main():
         for image in images:
             for i in range(1, args.conv_layers + 1):
                 model = load_partial_model(args.model, last_layer='convolution2d_{}'.format(i))
-                plot_model_output(model, np.array([cv2.imread(image)]), image_prefix="examples/{}-{}".format(image.replace("/", "_"), model.layers[-1].name), cmap='jet')
+                plot_model_output(model, np.array([cv2.imread(image)]), image_prefix="examples/{}-{}".format(image.split('/')[-1], model.layers[-1].name), cmap='jet')
         return
 
     ## Train / test targets

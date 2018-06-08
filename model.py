@@ -6,7 +6,6 @@ from sklearn.utils import shuffle
 from keras.models import Sequential, load_model, model_from_json
 from keras.layers import Dense, Flatten, Dropout, Lambda
 from keras.layers import Conv2D, Cropping2D
-import tensorflow as tf
 import matplotlib
 from keras.utils.visualize_util import plot
 
@@ -20,7 +19,9 @@ import argparse
 SAMPLE_MULTIPLIER = 4
 RANDOM_STATE = 42
 
+
 def grayscale_image(image):
+    import tensorflow as tf
     return tf.image.rgb_to_grayscale(image)
 
 def get_driving_log(sample_dir):

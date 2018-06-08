@@ -218,10 +218,21 @@ def plot_training_graphs(history):
 def plot_model_output(model, input, cmap='gray', nb_filters=5, image_prefix="activation"):
     prediction = model.predict(input)
     prediction = np.squeeze(prediction, axis=0)
-    for i in range(0, min(nb_filters, prediction.shape[2])):
+
+    columns = min(nb_filters, prediction.shape[2])
+    rows = 1
+    fig = plt.figure(figsize=(columns * 3, rows * 3))
+    plt.axis('off')
+
+    for i in range(0, columns):
+        ax = fig.add_subplot(rows, columns, i + 1)
+        plt.title('FeatureMap ' + str(i))
         p = prediction[:, :, i]
-        plt.imshow(p, interpolation='None', cmap=cmap)
-        plt.savefig('./{}-{}.png'.format(image_prefix, i), format='png')
+        plt.axis('off')
+        ax.imshow(p, interpolation='None', cmap=cmap)
+    fig.tight_layout()
+
+    plt.savefig('./{}.png'.format(image_prefix), format='png')
 
 
 ## Main

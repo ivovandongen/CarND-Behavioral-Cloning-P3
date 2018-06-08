@@ -17,6 +17,7 @@ import argparse
 
 # Constants
 SAMPLE_MULTIPLIER = 4
+RANDOM_STATE = 42
 
 
 def get_driving_log(sample_dir):
@@ -37,8 +38,9 @@ def create_data_sets(driving_log):
 
     # Split off validation set
     from sklearn.model_selection import train_test_split
-    train_samples, validation_samples = train_test_split(driving_log, test_size=0.4, random_state=42)
-    validation_samples, test_samples = train_test_split(validation_samples, test_size=0.5, random_state=42)
+    log_shuffled = shuffle(driving_log, random_state=RANDOM_STATE)
+    train_samples, validation_samples = train_test_split(log_shuffled, test_size=0.4, random_state=RANDOM_STATE)
+    validation_samples, test_samples = train_test_split(validation_samples, test_size=0.5, random_state=RANDOM_STATE)
 
     return train_samples, validation_samples, test_samples
 
@@ -48,7 +50,7 @@ def generator(samples, batch_size=32, steering_angle_correction=.25):
     batch_size = batch_size // SAMPLE_MULTIPLIER
     total = 0
     while 1:  # Loop forever so the generator never terminates
-        samples = shuffle(samples)
+        samples = shuffle(samples, random_state=RANDOM_STATE)
         for offset in range(0, num_samples, batch_size):
             # print(offset, offset + batch_size)
             batch_samples = samples[offset:offset + batch_size]
@@ -80,7 +82,7 @@ def generator(samples, batch_size=32, steering_angle_correction=.25):
             X = np.array(images)
             y = np.array(angles)
             total += len(images)
-            yield shuffle(X, y)
+            yield shuffle(X, y, random_state=RANDOM_STATE)
 
 
 def compile_model(model):

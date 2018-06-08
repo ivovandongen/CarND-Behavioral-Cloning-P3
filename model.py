@@ -222,13 +222,13 @@ def main():
     if not args_valid:
         parser.print_help()
 
-    print("Reading resouces from:")
+    print("Reading resources from:")
     for dir in sample_data_dirs:
         print(dir)
 
     # Load sample data and split
     driving_log = sum([log[0] for log in [get_driving_log(dir) for dir in sample_data_dirs]], [])
-    print("Total samples:", len(driving_log))
+    print("Total samples:", len(driving_log), "Including left/right cameras", len(driving_log) * 3)
 
     train_samples, validation_samples, test_samples = create_data_sets(driving_log)
     print("Original train: {}, validation: {}, test {}".format(len(train_samples), len(validation_samples), len(test_samples)))
@@ -240,7 +240,7 @@ def main():
     # Account for data generation
     train_samples_per_epoch = len(train_samples) * SAMPLE_MULTIPLIER
     validation_samples_per_epoch = len(validation_samples) * SAMPLE_MULTIPLIER
-    print("Augmented train: {}, validation: {}".format(train_samples_per_epoch, validation_samples_per_epoch))
+    print("Augmented train: {}, validation: {}".format(train_samples_per_epoch, validation_samples_per_epoch), "Total:", len(driving_log) * SAMPLE_MULTIPLIER)
 
     if args.action == 'train':
         # Train a new model

@@ -24,20 +24,26 @@ def get_driving_log(sample_dir):
         reader = csv.reader(file)
         driving_log = [line for line in reader]
         header = driving_log[0]
-        return driving_log[1:len(driving_log)], header  # strip header
+        lines = driving_log[1:len(driving_log)]
 
+        # Correct paths
+        for line in lines:
+            for i in range(3):
+                line[i] = sample_dir + '/IMG/' + line[i].split('/')[-1]
+
+        return lines, header
 
 def create_data_sets(driving_log):
 
     # Split off validation set
     from sklearn.model_selection import train_test_split
-    train_samples, validation_samples = train_test_split(driving_log, test_size=0.4)
-    validation_samples, test_samples = train_test_split(validation_samples, test_size=0.5)
+    train_samples, validation_samples = train_test_split(driving_log, test_size=0.4, random_state=42)
+    validation_samples, test_samples = train_test_split(validation_samples, test_size=0.5, random_state=42)
 
     return train_samples, validation_samples, test_samples
 
 
-def generator(samples, sample_dir, batch_size=32, steering_angle_correction=.25):
+def generator(samples, batch_size=32, steering_angle_correction=.25):
     num_samples = len(samples)
     batch_size = batch_size // SAMPLE_MULTIPLIER
     total = 0
@@ -51,7 +57,7 @@ def generator(samples, sample_dir, batch_size=32, steering_angle_correction=.25)
             angles = []
             for batch_sample in batch_samples:
                 # Add center image
-                center_image = cv2.imread(sample_dir + '/IMG/' + batch_sample[0].split('/')[-1])
+                center_image = cv2.imread(batch_sample[0])
                 center_angle = float(batch_sample[3])
                 images.append(center_image)
                 angles.append(center_angle)
@@ -61,8 +67,8 @@ def generator(samples, sample_dir, batch_size=32, steering_angle_correction=.25)
                 right_angle = center_angle - steering_angle_correction
                 angles.extend([left_angle, right_angle])
 
-                left_image = cv2.imread(sample_dir + '/IMG/' + batch_sample[1].split('/')[-1])
-                right_image = cv2.imread(sample_dir + '/IMG/' + batch_sample[2].split('/')[-1])
+                left_image = cv2.imread(batch_sample[1])
+                right_image = cv2.imread(batch_sample[2])
                 images.extend([left_image, right_image])
 
                 # Add flipped version
@@ -171,6 +177,7 @@ def parse_cmd_line_args():
     parser.add_argument(
         '--sample_data_dir',
         '-d',
+        nargs = '+',
         type=str,
         default='./resources/example_data',
         help='Training data directory')
@@ -205,23 +212,30 @@ def main():
 
     # Deal with the cmd line arguments
     args, parser = parse_cmd_line_args()
+    sample_data_dirs = args.sample_data_dir if type(args.sample_data_dir) == list else [args.sample_data_dir]
 
     args_valid = True
-    if not os.path.isdir(args.sample_data_dir):
-        print("Need to specify the sample dir")
+    if not all([os.path.isdir(dir) for dir in sample_data_dirs]):
+        print("Need to specify the sample dirs correctly")
         args_valid = False
 
     if not args_valid:
         parser.print_help()
 
+    print("Reading resouces from:")
+    for dir in sample_data_dirs:
+        print(dir)
+
     # Load sample data and split
-    driving_log, header = get_driving_log(args.sample_data_dir)
+    driving_log = sum([log[0] for log in [get_driving_log(dir) for dir in sample_data_dirs]], [])
+    print("Total samples:", len(driving_log))
+
     train_samples, validation_samples, test_samples = create_data_sets(driving_log)
     print("Original train: {}, validation: {}, test {}".format(len(train_samples), len(validation_samples), len(test_samples)))
 
     # Create generators for train and validation data
-    train_generator = generator(train_samples, sample_dir=args.sample_data_dir, steering_angle_correction=args.steering_angle_correction)
-    validation_generator = generator(validation_samples, sample_dir=args.sample_data_dir, steering_angle_correction=args.steering_angle_correction)
+    train_generator = generator(train_samples, steering_angle_correction=args.steering_angle_correction)
+    validation_generator = generator(validation_samples, steering_angle_correction=args.steering_angle_correction)
 
     # Account for data generation
     train_samples_per_epoch = len(train_samples) * SAMPLE_MULTIPLIER
@@ -271,8 +285,7 @@ def main():
         model = load_model_with_fallback(args.model)
         print(model.summary())
 
-        test_generator = generator(validation_samples, sample_dir=args.sample_data_dir,
-                                   steering_angle_correction=args.steering_angle_correction)
+        test_generator = generator(validation_samples, steering_angle_correction=args.steering_angle_correction)
         test_samples_nb = len(test_samples) * SAMPLE_MULTIPLIER
         print("Testing on {} samples".format(test_samples_nb))
         result = model.evaluate_generator(test_generator, val_samples=test_samples_nb)

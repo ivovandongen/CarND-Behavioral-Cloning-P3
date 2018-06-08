@@ -19,10 +19,16 @@ import argparse
 SAMPLE_MULTIPLIER = 4
 RANDOM_STATE = 42
 
+## Image manipulation
+
 
 def grayscale_image(image):
     import tensorflow as tf
     return tf.image.rgb_to_grayscale(image)
+
+
+## Data set construction
+
 
 def get_driving_log(sample_dir):
     with open(sample_dir + '/driving_log.csv') as file:
@@ -89,6 +95,9 @@ def generator(samples, batch_size=32, steering_angle_correction=.25):
             yield shuffle(X, y, random_state=RANDOM_STATE)
 
 
+## Model creation
+
+
 def compile_model(model):
     model.compile(optimizer='Adam', loss='mse', metrics=['accuracy'])
     return model
@@ -110,13 +119,43 @@ def create_model():
     model.add(Flatten())
     model.add(Dropout(0.5))
     model.add(Dense(100, activation='relu'))
-    # model.add(Dropout(0.5))
     model.add(Dense(50, activation='relu'))
     model.add(Dense(10))
     model.add(Dense(1))
 
     return compile_model(model)
 
+
+def load_partial_model(filename, first_layer=None, last_layer=None):
+    print("Loading partial model:", filename)
+    import h5py
+    f = h5py.File(filename, mode='r')
+
+    # instantiate model
+    model_config = f.attrs.get('model_config')
+    if model_config is None:
+        raise ValueError('No model found in config file.')
+    model = model_from_json(model_config.decode('utf-8'))
+    model.load_weights(filename)
+
+    new_model = Sequential()
+
+    start_adding = first_layer is None
+    for layer in model.layers:
+        if first_layer is not None and layer.name == first_layer:
+            start_adding = True
+
+        if start_adding:
+            print ("Adding", layer.name)
+            new_model.add(layer)
+        else:
+            print("Skipping", layer.name)
+
+        if last_layer is not None and layer.name == last_layer:
+            print ("Done")
+            break
+
+    return compile_model(new_model)
 
 def load_model_with_fallback(filename):
     try:
@@ -146,6 +185,9 @@ def save_model(model, name):
     model.save(name)
 
 
+## Visualization
+
+
 def plot_training_graphs(history):
     # Create some graphs
 
@@ -173,12 +215,24 @@ def plot_training_graphs(history):
     plt.savefig('./loss.png', format='png')
 
 
+def plot_model_output(model, input, cmap='gray', nb_filters=5, image_prefix="activation"):
+    prediction = model.predict(input)
+    prediction = np.squeeze(prediction, axis=0)
+    for i in range(0, min(nb_filters, prediction.shape[2])):
+        p = prediction[:, :, i]
+        plt.imshow(p, interpolation='None', cmap=cmap)
+        plt.savefig('./{}-{}.png'.format(image_prefix, i), format='png')
+
+
+## Main
+
+
 def parse_cmd_line_args():
     parser = argparse.ArgumentParser(description='Manipulate model')
     parser.add_argument(
         'action',
         type=str,
-        choices=['train', 'fine_tune', 'test', 'plot'],
+        choices=['train', 'fine_tune', 'test', 'plot', 'visualize'],
         default='',
         help='main action'
     )
@@ -213,6 +267,18 @@ def parse_cmd_line_args():
         type=float,
         default=.25,
         help='Steering angle correction for left/right camera images')
+    parser.add_argument(
+        '--input_image',
+        '-i',
+        nargs ='+',
+        type=str,
+        help='Input image for activation map visualization')
+    parser.add_argument(
+        '--conv_layers',
+        '-c',
+        type=int,
+        default=1,
+        help='Number of layers to show for activation map visualization')
     return parser.parse_args(), parser
 
 
@@ -220,6 +286,27 @@ def main():
 
     # Deal with the cmd line arguments
     args, parser = parse_cmd_line_args()
+
+    ## Visualization targets
+
+    if args.action == 'plot':
+        print("Plotting model", args.model)
+        model = load_model_with_fallback(args.model)
+        print(model.summary())
+        plot(model, to_file='model.png', show_shapes=True, show_layer_names=False)
+        return
+
+    elif args.action == 'visualize':
+        print("Visualizing model activations", args.model)
+        images = args.input_image if type(args.input_image) == list else [args.input_image]
+        for image in images:
+            for i in range(1, args.conv_layers + 1):
+                model = load_partial_model(args.model, last_layer='convolution2d_{}'.format(i))
+                plot_model_output(model, np.array([cv2.imread(image)]), image_prefix="examples/{}-{}".format(image.replace("/", "_"), model.layers[-1].name), cmap='jet')
+        return
+
+    ## Train / test targets
+
     sample_data_dirs = args.sample_data_dir if type(args.sample_data_dir) == list else [args.sample_data_dir]
 
     args_valid = True
@@ -259,7 +346,7 @@ def main():
         plot_training_graphs(history)
         print(model.summary())
 
-    if args.action =='fine_tune':
+    elif args.action =='fine_tune':
         # Fine tune an existing model
         print("Fine tuning ", args.model)
         # Load
@@ -298,12 +385,6 @@ def main():
         print("Testing on {} samples".format(test_samples_nb))
         result = model.evaluate_generator(test_generator, val_samples=test_samples_nb)
         print("Test result:", result)
-
-    elif args.action == 'plot':
-        print("Plotting model", args.model)
-        model = load_model_with_fallback(args.model)
-        print(model.summary())
-        plot(model, to_file='model.png', show_shapes=True, show_layer_names=False)
 
 
 if __name__ == '__main__':

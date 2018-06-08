@@ -6,6 +6,7 @@ from sklearn.utils import shuffle
 from keras.models import Sequential, load_model, model_from_json
 from keras.layers import Dense, Flatten, Dropout, Lambda
 from keras.layers import Conv2D, Cropping2D
+import tensorflow as tf
 import matplotlib
 from keras.utils.visualize_util import plot
 
@@ -19,6 +20,8 @@ import argparse
 SAMPLE_MULTIPLIER = 4
 RANDOM_STATE = 42
 
+def grayscale_image(image):
+    return tf.image.rgb_to_grayscale(image)
 
 def get_driving_log(sample_dir):
     with open(sample_dir + '/driving_log.csv') as file:
@@ -92,8 +95,10 @@ def compile_model(model):
 
 def create_model():
     model = Sequential()
+    # Grayscale
+    model.add(Lambda(grayscale_image, input_shape=(160, 320, 3)))
     # Normalize
-    model.add(Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(160, 320, 3)))
+    model.add(Lambda(lambda x: (x / 255.0) - 0.5))
     # Crop image to show only the road
     model.add(Cropping2D(cropping=((70, 25), (0,0))))
     model.add(Conv2D(24, 5, 5, subsample=(2, 2), activation='relu'))

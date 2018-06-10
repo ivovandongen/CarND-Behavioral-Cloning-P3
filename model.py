@@ -6,7 +6,6 @@ from sklearn.utils import shuffle
 from keras.models import Sequential, load_model, model_from_json
 from keras.layers import Dense, Flatten, Dropout, Lambda
 from keras.layers import Conv2D, Cropping2D
-from keras.regularizers import l2, activity_l2
 import matplotlib
 from keras.utils.visualize_util import plot
 
@@ -19,7 +18,6 @@ import argparse
 # Constants
 SAMPLE_MULTIPLIER = 4
 RANDOM_STATE = 42
-L2_REG = 0.0001
 
 ## Image manipulation
 
@@ -105,12 +103,6 @@ def compile_model(model):
     return model
 
 
-def round_angle(x, decimals = 3):
-    import tensorflow as tf
-    multiplier = tf.constant(10 ** decimals, dtype=x.dtype)
-    return tf.int32(x * multiplier) / multiplier
-
-
 def create_model():
     model = Sequential()
     # Grayscale
@@ -119,16 +111,16 @@ def create_model():
     model.add(Lambda(lambda x: (x / 255.0) - 0.5))
     # Crop image to show only the road
     model.add(Cropping2D(cropping=((70, 25), (0,0))))
-    model.add(Conv2D(24, 5, 5, subsample=(2, 2), activation='relu', W_regularizer=l2(L2_REG)))
-    model.add(Conv2D(36, 5, 5, subsample=(2, 2), activation='relu', W_regularizer=l2(L2_REG)))
-    model.add(Conv2D(48, 5, 5, subsample=(2, 2), activation='relu', W_regularizer=l2(L2_REG)))
-    model.add(Conv2D(64, 3, 3, activation='relu', W_regularizer=l2(L2_REG)))
-    model.add(Conv2D(64, 3, 3, activation='relu', W_regularizer=l2(L2_REG)))
+    model.add(Conv2D(24, 5, 5, subsample=(2, 2), activation='relu'))
+    model.add(Conv2D(36, 5, 5, subsample=(2, 2), activation='relu'))
+    model.add(Conv2D(48, 5, 5, subsample=(2, 2), activation='relu'))
+    model.add(Conv2D(64, 3, 3, activation='relu'))
+    model.add(Conv2D(64, 3, 3, activation='relu'))
     model.add(Flatten())
     model.add(Dropout(0.5))
-    model.add(Dense(100, activation='relu', W_regularizer=l2(L2_REG)))
-    model.add(Dense(50, activation='relu', W_regularizer=l2(L2_REG)))
-    model.add(Dense(10, activation='relu', W_regularizer=l2(L2_REG)))
+    model.add(Dense(100, activation='relu'))
+    model.add(Dense(50, activation='relu'))
+    model.add(Dense(10))
     model.add(Dense(1))
 
     return compile_model(model)
